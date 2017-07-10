@@ -1,12 +1,17 @@
 package spider
 
 import (
+	"bytes"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
+	iconv "github.com/djimenez/iconv-go"
 	"github.com/zheng-ji/goSnowFlake"
 )
 
@@ -14,7 +19,7 @@ type Product struct {
 	ID       int64
 	Name     string
 	Catalog  string
-	Vender   string
+	Brand    string
 	Price    string
 	Info     string
 	Url      string
@@ -105,8 +110,24 @@ func (s *SpiderBase) ProductUrls(searchUrls []string, productReg *regexp.Regexp)
 		for i := 1; i < len(matches); i++ {
 			item := fmt.Sprintf(s.ItemUrl, matches[i][1])
 			result = append(result, item)
-			fmt.Println(item)
 		}
 	}
 	return RemoveDuplicatesAndEmpty(result)
+}
+
+func (s *SpiderBase) Unicode2String(form string) (to string, err error) {
+	bs, err := hex.DecodeString(strings.Replace(form, `\u`, ``, -1))
+	if err != nil {
+		return
+	}
+	for i, bl, br, r := 0, len(bs), bytes.NewReader(bs), uint16(0); i < bl; i += 2 {
+		binary.Read(br, binary.BigEndian, &r)
+		to += string(r)
+	}
+	return
+}
+
+func (s *SpiderBase) CodeConvert(str, from, to string) string {
+	result, _ := iconv.ConvertString(str, from, to)
+	return result
 }
